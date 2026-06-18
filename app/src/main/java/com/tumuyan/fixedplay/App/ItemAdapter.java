@@ -1,7 +1,7 @@
 
 package com.tumuyan.fixedplay.App;
 
-import static android.content.Context.MODE_MULTI_PROCESS;
+import static android.content.Context.MODE_PRIVATE;
 
 import android.content.Context;
 import android.content.Intent;
@@ -102,7 +102,7 @@ public class ItemAdapter extends ArrayAdapter<Item> {
     public void select(String Name, String packageName, String className){
 
         if(mode.equals("2nd")){
-            SharedPreferences.Editor editor = getContext(). getSharedPreferences("setting",MODE_MULTI_PROCESS).edit();
+            SharedPreferences.Editor editor = getContext(). getSharedPreferences("setting",MODE_PRIVATE).edit();
             editor.putString("app_2nd", packageName);
             editor.putString("label_2nd", Name);
             editor.putString("class_2nd",className);
@@ -116,7 +116,7 @@ public class ItemAdapter extends ArrayAdapter<Item> {
             if (intent != null) {
 
                 {
-                    SharedPreferences.Editor editor = getContext(). getSharedPreferences("setting",MODE_MULTI_PROCESS).edit();
+                    SharedPreferences.Editor editor = getContext(). getSharedPreferences("setting",MODE_PRIVATE).edit();
                     editor.putString("app", packageName);
                     editor.putString("label", Name);
                     editor.putString("class",className);
@@ -152,5 +152,4 @@ public class ItemAdapter extends ArrayAdapter<Item> {
 
 
 }
-
 

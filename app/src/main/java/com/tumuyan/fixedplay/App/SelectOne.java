@@ -16,6 +16,8 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 
+import android.support.v4.content.FileProvider;
+
 import com.tumuyan.fixedplay.R;
 
 import java.io.File;
@@ -274,7 +276,12 @@ public class SelectOne extends Activity {
                 Intent intent = new Intent();
                 intent.setAction(Intent.ACTION_VIEW);
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                intent.setDataAndType(Uri.fromFile(f), "*/*");
+                intent.setDataAndType(
+                        FileProvider.getUriForFile(
+                                this,
+                                getPackageName() + ".fileprovider",
+                                f),
+                        "*/*");
                 return intent;
             }
 

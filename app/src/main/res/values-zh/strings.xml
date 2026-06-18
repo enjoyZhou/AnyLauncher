@@ -10,6 +10,7 @@
     <string name="btn_2">选择应用</string>
     <string name="error_could_not_start">此应用可能无法设置为Launcher</string>
     <string name="error_btn1">这个功能看可能并没什么卵用，\n还是手动在系统里设置吧\n有解决问题的demo请联系我</string>
+    <string name="toast_open_home_settings_manual">请在系统设置中手动选择默认桌面应用。</string>
     <string name="search">搜索</string>
 
     <string name="toast_main_start_error">模式%1$s启动应用时发生了错误"</string>

@@ -19,8 +19,6 @@ import com.tumuyan.fixedplay.SettingActivity;
 
 import java.util.List;
 
-import static android.content.Context.MODE_MULTI_PROCESS;
-
 
 /**
  * Created by baniel on 1/19/17.
@@ -92,5 +90,4 @@ public class mixAdapter extends ArrayAdapter<Item> {
         this.mOnItemDeleteListener = mOnItemDeleteListener;
     }
 }
-
 

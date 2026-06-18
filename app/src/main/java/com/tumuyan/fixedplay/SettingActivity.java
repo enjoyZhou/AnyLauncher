@@ -24,7 +24,6 @@ import com.tumuyan.fixedplay.Beta.SelectApp;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class SettingActivity extends Activity {
     PackageManager packageManager;
@@ -150,50 +149,75 @@ public class SettingActivity extends Activity {
         findViewById(R.id.button1).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                Intent intent = new Intent();
-                intent.setClassName("com.android.settings",
-                        "com.android.settings.applications.DefaultAppSelectionActivity");
-                intent.setAction("android.settings.HOME_SETTINGS");
-
-                if (null == packageManager.resolveActivity(intent, 0)) {
-                    intent.setClassName("com.android.settings",
-                            "com.android.settings.Settings$AdvancedAppsActivity");
-                    Log.w("button1", "DefaultHomeSettings");
-                }
-
-
-/*                if(null==packageManager.resolveActivity(intent, 0)){
-                    intent = new Intent("com.miui.settings.HOME_SETTINGS_MIUI");
-                    intent.setClassName("com.android.settings",
-                            "com.android.settings.applications.DefaultHomeSettings");
-//                    intent.setAction("com.miui.settings.HOME_SETTINGS_MIUI");
-//                    miui.permission.USE_INTERNAL_GENERAL_API
-
-                    Log.w("button1","DefaultHomeSettings");
-                }*/
-
-                if (null != packageManager.resolveActivity(intent, 0)) {
-                    try {
-                        startActivity(intent);
-                    } catch (Exception e) {
-                        Log.w("button1", "creash");
-                        e.printStackTrace();
-                        Intent i = new Intent(Intent.ACTION_MAIN);
-                        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        i.addCategory(Intent.CATEGORY_HOME);
-                        startActivity(i);
-                    }
-                } else {
-                    Log.w("button1", "not find");
-                    Intent i = new Intent(Intent.ACTION_MAIN);
-                    i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    i.addCategory(Intent.CATEGORY_HOME);
-                    startActivity(i);
-                }
+                openHomeSettings();
             }
         });
 
+    }
+
+    /**
+     * 跳转到系统“默认主屏幕应用(Launcher)选择”界面。
+     * 兼容 Android 7~13：优先使用官方公开 action（仅设 action、不锁定具体类名，
+     * 由系统自行解析到对应 ROM 的设置页），逐级回退，最后兜底到设置首页 / HOME 选择器。
+     */
+    private void openHomeSettings() {
+        // 1. 官方：默认主屏幕应用设置页（API 21+，Android 7~13 通用，原生/MIUI/三星等均支持）
+        if (tryStartActivity(new Intent(android.provider.Settings.ACTION_HOME_SETTINGS))) {
+            return;
+        }
+
+        // 2. 官方：默认应用总览页（API 24+，部分 ROM 没有独立 HOME 页时进入这里再选）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+                && tryStartActivity(new Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))) {
+            return;
+        }
+
+        // 3. 厂商内部类兜底（不同 ROM 类名不同，命中其一即可）
+        String[][] vendorActivities = {
+                {"com.android.settings", "com.android.settings.applications.DefaultHomeSettings"},
+                {"com.android.settings", "com.android.settings.Settings$AdvancedAppsActivity"},
+                {"com.android.settings", "com.android.settings.applications.DefaultAppSelectionActivity"},
+        };
+        for (String[] cn : vendorActivities) {
+            Intent intent = new Intent();
+            intent.setClassName(cn[0], cn[1]);
+            if (tryStartActivity(intent)) {
+                return;
+            }
+        }
+
+        // 4. 兜底：打开系统设置首页，让用户手动进入“默认应用 / 桌面”
+        if (tryStartActivity(new Intent(android.provider.Settings.ACTION_SETTINGS))) {
+            Toast.makeText(SettingActivity.this, R.string.toast_open_home_settings_manual, Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // 5. 最后兜底：触发 HOME 选择器（仅当本应用未被设为默认 Launcher 时才会弹出选择框）
+        Log.w("openHomeSettings", "fallback to HOME chooser");
+        Intent home = new Intent(Intent.ACTION_MAIN);
+        home.addCategory(Intent.CATEGORY_HOME);
+        home.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(home);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 若目标 Intent 能被解析则启动并返回 true，否则返回 false（不抛出异常）。
+     */
+    private boolean tryStartActivity(Intent intent) {
+        if (packageManager.resolveActivity(intent, 0) == null) {
+            return false;
+        }
+        try {
+            startActivity(intent);
+            return true;
+        } catch (Exception e) {
+            Log.w("openHomeSettings", "start failed: " + intent, e);
+            return false;
+        }
     }
 
 
@@ -246,11 +270,11 @@ public class SettingActivity extends Activity {
             Log.e("configText()", "key is empty");
             return;
         }
-        SharedPreferences read = getSharedPreferences("setting", MODE_MULTI_PROCESS);
+        SharedPreferences read = getSharedPreferences("setting", MODE_PRIVATE);
         String value = "";
-        if (Objects.equals(type, TYPE_STRING)) {
+        if (TYPE_STRING.equals(type)) {
             value = read.getString(key, default_value);
-        } else if (Objects.equals(type, TYPE_INT)) {
+        } else if (TYPE_INT.equals(type)) {
             value = String.valueOf(read.getInt(key, Integer.parseInt(default_value)));
         }
         final EditText inputServer = new EditText(SettingActivity.this);
@@ -271,10 +295,10 @@ public class SettingActivity extends Activity {
                     public void onClick(DialogInterface dialog, int which) {
                         _uri = inputServer.getText().toString();
                         Log.w("_uri", "key=" + key + ", value=" + _uri);
-                        SharedPreferences.Editor editor = SettingActivity.this.getSharedPreferences("setting", MODE_MULTI_PROCESS).edit();
-                        if (Objects.equals(TYPE_STRING, type)) {
+                        SharedPreferences.Editor editor = SettingActivity.this.getSharedPreferences("setting", MODE_PRIVATE).edit();
+                        if (TYPE_STRING.equals(type)) {
                             editor.putString(key, _uri);
-                        } else if (Objects.equals(type, TYPE_INT)) {
+                        } else if (TYPE_INT.equals(type)) {
                             editor.putInt(key, Integer.parseInt(_uri));
                         }
                         editor.commit();
@@ -292,7 +316,7 @@ public class SettingActivity extends Activity {
     }
 
     public void go() {
-        SharedPreferences read = getSharedPreferences("setting", MODE_MULTI_PROCESS);
+        SharedPreferences read = getSharedPreferences("setting", MODE_PRIVATE);
 
         final String app = read.getString("app", "");
         if (app.length() < 1) return;
@@ -335,7 +359,7 @@ public class SettingActivity extends Activity {
 
 
     public void go2ndLauncher() {
-        SharedPreferences read = getSharedPreferences("setting", MODE_MULTI_PROCESS);
+        SharedPreferences read = getSharedPreferences("setting", MODE_PRIVATE);
         boolean apply2nd = read.getBoolean("apply2nd", false);
         CheckBox cbx2ndLauncher = ((CheckBox) findViewById(R.id.cbx_2nd_launcher));
         cbx2ndLauncher.setChecked(apply2nd);
@@ -343,7 +367,7 @@ public class SettingActivity extends Activity {
             @Override
             public void onClick(View view) {
                 boolean state = ((CheckBox) view).isChecked();
-                SharedPreferences.Editor editor = SettingActivity.this.getSharedPreferences("setting", MODE_MULTI_PROCESS).edit();
+                SharedPreferences.Editor editor = SettingActivity.this.getSharedPreferences("setting", MODE_PRIVATE).edit();
                 editor.putBoolean("apply2nd", state);
                 editor.commit();
             }
@@ -425,7 +449,8 @@ public class SettingActivity extends Activity {
 
     public void checkAndPermission() {
         Log.i("checkPermission", String.valueOf(Build.VERSION.SDK_INT));
-        if (Build.VERSION.SDK_INT >= 23) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
             List<String> lackedPermission = new ArrayList<String>();
 //            if (!(this.checkSelfPermission(Manifest.permission.READ_PHONE_STATE)== PackageManager.PERMISSION_GRANTED)) {
 //                lackedPermission.add(Manifest.permission.READ_PHONE_STATE);

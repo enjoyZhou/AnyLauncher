@@ -22,6 +22,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import android.support.v4.content.FileProvider;
+
 import com.tumuyan.fixedplay.App.Item;
 import com.tumuyan.fixedplay.App.ItemAdapter;
 import com.tumuyan.fixedplay.App.SelectOne;
@@ -172,7 +174,7 @@ public class SelectApp extends Activity {
     }
 
     private void saveAndExit(){
-        SharedPreferences.Editor editor =  getSharedPreferences("setting",MODE_MULTI_PROCESS).edit();
+        SharedPreferences.Editor editor =  getSharedPreferences("setting",MODE_PRIVATE).edit();
         editor.putString("app", packageName);
         editor.putString("label", label);
         editor.putString("class",className);
@@ -423,7 +425,12 @@ public class SelectApp extends Activity {
                 Intent intent = new Intent();
                 intent.setAction(Intent.ACTION_VIEW);
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                intent.setDataAndType(Uri.fromFile(f), "*/*");
+                intent.setDataAndType(
+                        FileProvider.getUriForFile(
+                                this,
+                                getPackageName() + ".fileprovider",
+                                f),
+                        "*/*");
                 return intent;
             }
 

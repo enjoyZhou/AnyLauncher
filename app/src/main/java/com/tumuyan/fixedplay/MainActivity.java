@@ -16,6 +16,7 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import android.support.v4.content.FileProvider;
 
 import com.bumptech.glide.Glide;
 
@@ -34,7 +35,7 @@ public class MainActivity extends Activity {
         packageManager = getPackageManager();
         Log.w("MainActivity", "Create");
 
-        SharedPreferences read = getSharedPreferences("setting", MODE_MULTI_PROCESS);
+        SharedPreferences read = getSharedPreferences("setting", MODE_PRIVATE);
 
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD,
                 WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
@@ -62,7 +63,7 @@ public class MainActivity extends Activity {
             });
             Glide.with(this)
                     .load(splash_img)
-                    .placeholder(R.drawable.ic_baseline_hourglass_top_24)
+                    .placeholder(R.drawable.unknow)
 //                    .asGif()
                     .into(imgview);
         }
@@ -95,7 +96,7 @@ public class MainActivity extends Activity {
 
 
     public void go() {
-        SharedPreferences read = getSharedPreferences("setting", MODE_MULTI_PROCESS);
+        SharedPreferences read = getSharedPreferences("setting", MODE_PRIVATE);
         String app = read.getString("app", "");
         String claseName = read.getString("class", "");
         String uri = read.getString("uri", "");
@@ -126,7 +127,7 @@ public class MainActivity extends Activity {
 
             Log.w("combo", "" + combo);
             {
-                SharedPreferences.Editor editor = getSharedPreferences("setting", MODE_MULTI_PROCESS).edit();
+                SharedPreferences.Editor editor = getSharedPreferences("setting", MODE_PRIVATE).edit();
                 editor.putInt("combo", combo);
                 editor.putLong("lastTime", time);
                 editor.commit();
@@ -257,15 +258,23 @@ public class MainActivity extends Activity {
                 case "uri_file": {
                     Intent intent = new Intent("android.intent.action.VIEW");
                     intent.addCategory("android.intent.category.DEFAULT");
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     if (claseName.length() > 0) {
                         intent.setClassName(app, claseName);
                     } else {
                         intent.setPackage(app);
                     }
-                    Uri u = Uri.fromFile(new File(uri));
+                    Uri u = FileProvider.getUriForFile(
+                            this,
+                            getPackageName() + ".fileprovider",
+                            new File(uri));
                     intent.setDataAndType(u, "*/*");
-                    startActivity(intent);
+                    try {
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Could not open file: " + uri, e);
+                        Toast.makeText(this, R.string.error_could_not_start, Toast.LENGTH_SHORT).show();
+                    }
 
                     break;
                 }
@@ -306,7 +315,3 @@ public class MainActivity extends Activity {
         }
     };
 }
-
-
-
-
