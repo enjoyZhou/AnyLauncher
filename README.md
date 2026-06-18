@@ -1,6 +1,11 @@
 # AnyLauncher
 You can choose any Android application and set it as a Launcher.
 
+## Supported Android versions
+The APK supports Android 2.3 (API 9) through Android 13 (API 33).
+Android 7.0 and newer are the actively verified compatibility range;
+Android 2.3 through 6.x use best-effort legacy compatibility.
+
 ## Download | 下载
 [Github Release](https://github.com/tumuyan/AnyLauncher/releases)
 
@@ -26,6 +31,6 @@ You can choose any Android application and set it as a Launcher.
 
 
 ## Build Environment
-* Android Gradle Plugin 3.2.1
-* Gradle 4.6
-* Oracle OpenJDK 1.8
+* Android Gradle Plugin 4.2.2
+* Gradle 6.7.1
+* JDK 11

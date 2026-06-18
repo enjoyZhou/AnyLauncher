@@ -12,6 +12,7 @@
     <string name="error_could_not_start">Not supported application.</string>
 
     <string name="error_btn1">This button may be not working.\nYou should manual find the Launcher Selecter from the System Setting </string>
+    <string name="toast_open_home_settings_manual">Please select the default home app manually in Settings.</string>
     <string name="search">Search</string>
     <string name="toast_main_start_error">mode %1$s: Error onStart()"</string>
 
