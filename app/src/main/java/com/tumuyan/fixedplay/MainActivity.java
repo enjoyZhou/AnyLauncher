@@ -25,7 +25,7 @@ import java.io.File;
 
 public class MainActivity extends Activity {
 
-    private static final long SECONDARY_LAUNCHER_USER_PRESS_WINDOW_MS = 800L;
+    private static final long SECONDARY_LAUNCHER_USER_PRESS_WINDOW_MS = 500L;
     private static final long SECONDARY_LAUNCHER_SYSTEM_TOLERANCE_MS = 250L;
     private static final long SECONDARY_LAUNCHER_LEGACY_SYSTEM_TOLERANCE_MS = 800L;
     private static final int SECONDARY_LAUNCHER_REQUIRED_PRESSES = 3;
@@ -38,10 +38,14 @@ public class MainActivity extends Activity {
     String mode = "r2", action = "";
     ImageView imgview = null;
     private boolean pendingHomeInvocation = true;
+    private boolean pendingHomeInvocationCountsAsPress = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        pendingHomeInvocationCountsAsPress = HomeLauncherEntry.isHomeIntent(
+                getIntent().getAction(),
+                getIntent().hasCategory(Intent.CATEGORY_HOME));
         packageManager = getPackageManager();
         Log.w("MainActivity", "Create");
 
@@ -86,17 +90,22 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         pendingHomeInvocation = true;
+        pendingHomeInvocationCountsAsPress = HomeLauncherEntry.isHomeIntent(
+                intent.getAction(),
+                intent.hasCategory(Intent.CATEGORY_HOME));
         Log.i("MainActivity", "Received new HOME intent");
         handlePendingHomeInvocation();
     }
 
     private void skip_splash() {
         if (imgview != null) {
+            boolean countAsHomePress = pendingHomeInvocationCountsAsPress;
             handler.removeMessages(GO);
             splash_time = 0;
             imgview.setImageDrawable(null);
             pendingHomeInvocation = false;
-            go();
+            pendingHomeInvocationCountsAsPress = false;
+            go(countAsHomePress);
         }
     }
 
@@ -115,8 +124,10 @@ public class MainActivity extends Activity {
 
     private void handlePendingHomeInvocation() {
         if (pendingHomeInvocation && splash_time <= 0) {
+            boolean countAsHomePress = pendingHomeInvocationCountsAsPress;
             pendingHomeInvocation = false;
-            go();
+            pendingHomeInvocationCountsAsPress = false;
+            go(countAsHomePress);
         }
     }
 
@@ -138,15 +149,12 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    private boolean handleSecondaryLauncher(SharedPreferences read) {
+    private boolean handleSecondaryLauncher(SharedPreferences read, boolean countAsHomePress) {
         boolean apply2nd = read.getBoolean("apply2nd", false);
-        if (!apply2nd) {
-            return false;
-        }
-
         final String app2nd = read.getString("app_2nd", "");
         final String class2nd = read.getString("class_2nd", "");
-        HomePressSequence.Result sequence = HomePressSequence.next(
+        HomePressSequence.Result sequence = HomeLauncherEntry.next(
+                countAsHomePress,
                 read.getInt(KEY_HOME_PRESS_COUNT, 0),
                 read.getLong(KEY_HOME_PRESS_START_TIME, 0),
                 SystemClock.elapsedRealtime(),
@@ -166,7 +174,8 @@ public class MainActivity extends Activity {
             return false;
         }
 
-        if (app2nd.length() > 0) {
+        if (HomeLauncherEntry.actionForTrigger(apply2nd, app2nd)
+                == HomeLauncherEntry.TriggerAction.LAUNCH_SECONDARY_APP) {
             launchSecondaryApp(app2nd, class2nd);
         } else {
             openSettings();
@@ -285,8 +294,11 @@ public class MainActivity extends Activity {
         }
     }
 
-
     public void go() {
+        go(false);
+    }
+
+    private void go(boolean countAsHomePress) {
         SharedPreferences read = getSharedPreferences("setting", MODE_PRIVATE);
         String app = read.getString("app", "");
         String className = read.getString("class", "");
@@ -295,7 +307,7 @@ public class MainActivity extends Activity {
         action = read.getString("action", "");
         Log.i("MainActivity.go()", "mode=" + mode + ", packagename=" + app);
 
-        if (handleSecondaryLauncher(read)) {
+        if (handleSecondaryLauncher(read, countAsHomePress)) {
             return;
         }
 
@@ -342,9 +354,8 @@ public class MainActivity extends Activity {
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case GO:
-                    pendingHomeInvocation = false;
-                    go();
                     splash_time = 0;
+                    handlePendingHomeInvocation();
                     break;
             }
         }

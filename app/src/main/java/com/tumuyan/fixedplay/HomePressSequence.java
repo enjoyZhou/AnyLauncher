@@ -5,7 +5,8 @@ final class HomePressSequence {
     static Result next(int previousCount, long sequenceStartTime, long currentTime,
                        long windowMillis, int requiredPresses) {
         if (previousCount >= requiredPresses) {
-            return new Result(previousCount, sequenceStartTime, true);
+            previousCount = 0;
+            sequenceStartTime = 0;
         }
 
         long elapsed = currentTime - sequenceStartTime;
