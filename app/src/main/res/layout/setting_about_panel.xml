@@ -19,7 +19,8 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:text="@string/app_name"
-        android:textSize="26sp" />
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/textView3"
@@ -27,9 +28,9 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:paddingTop="4dp"
-        android:paddingBottom="12dp"
+        android:paddingBottom="8dp"
         android:text="@string/about_main"
-        android:textSize="22sp" />
+        android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <TextView
         android:id="@+id/textView4"
@@ -37,7 +38,7 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:text="@string/about_author"
-        android:textSize="18sp" />
+        android:textAppearance="?android:attr/textAppearanceSmall" />
 
     <TextView
         android:id="@+id/textView6"
@@ -45,6 +46,7 @@
         android:layout_height="wrap_content"
         android:autoLink="web"
         android:gravity="center"
-        android:paddingTop="8dp"
-        android:text="@string/about_link" />
+        android:paddingTop="4dp"
+        android:text="@string/about_link"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
 </LinearLayout>

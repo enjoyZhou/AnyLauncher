@@ -17,7 +17,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingTop="4dp"
-            android:paddingBottom="12dp">
+            android:paddingBottom="4dp">
 
             <include layout="@layout/setting_selection_panel" />
 
