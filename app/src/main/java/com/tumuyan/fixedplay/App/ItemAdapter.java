@@ -1,4 +1,3 @@
-
 package com.tumuyan.fixedplay.App;
 
 import static android.content.Context.MODE_PRIVATE;
@@ -27,15 +26,14 @@ import java.util.List;
 
 public class ItemAdapter extends ArrayAdapter<Item> {
     private int layoutId;
-    private String mode="r2";
-    private String uri="";
-//    SQLiteDatabase db=SQLiteDatabase.openOrCreateDatabase(getContext().getDatabasePath("app"),null);
+    private String mode = "r2";
+    private String uri = "";
+    //    SQLiteDatabase db=SQLiteDatabase.openOrCreateDatabase(getContext().getDatabasePath("app"),null);
 
     public ItemAdapter(Context context, int layoutId, List<Item> list) {
         super(context, layoutId, list);
         this.layoutId = layoutId;
     }
-
 
     public void setMode(String mode) {
         this.mode = mode;
@@ -57,7 +55,6 @@ public class ItemAdapter extends ArrayAdapter<Item> {
         TextView item_packageName;
     }
 
-  //  @NonNull
     @Override
     public View getView(final int position, View convertView, final ViewGroup parent) {
         final Item item = getItem(position);
@@ -68,18 +65,18 @@ public class ItemAdapter extends ArrayAdapter<Item> {
         }
         final String packageName = item.getPackageName();
         final String className = item.getClassName();
-        final String Name = item.getName();
+        final String name = item.getName();
 
         String _class, _package, _name;
         if (className.length() < 1) {
-            _name = Name;
+            _name = name;
             _package = packageName;
         } else if (className.contains(packageName)) {
             _class = className.replace(packageName, "");
             _package = packageName;
-            _name = Name + "(" + _class + ")";
+            _name = name + "(" + _class + ")";
         } else {
-            _name = Name;
+            _name = name;
             _package = packageName + "\n" + className;
         }
 
@@ -91,53 +88,40 @@ public class ItemAdapter extends ArrayAdapter<Item> {
         convertView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                select(Name,packageName,className);
+                select(name, packageName, className);
             }
         });
         return convertView;
     }
 
-
-
-    public void select(String Name, String packageName, String className){
-
-        if(mode.equals("2nd")){
-            SharedPreferences.Editor editor = getContext(). getSharedPreferences("setting",MODE_PRIVATE).edit();
+    public void select(String name, String packageName, String className) {
+        if (mode.equals("2nd")) {
+            SharedPreferences.Editor editor = getContext().getSharedPreferences("setting", MODE_PRIVATE).edit();
             editor.putString("app_2nd", packageName);
-            editor.putString("label_2nd", Name);
-            editor.putString("class_2nd",className);
+            editor.putString("label_2nd", name);
+            editor.putString("class_2nd", className);
             editor.commit();
-            Intent intent=new Intent(getContext() ,SettingActivity.class);
+            Intent intent = new Intent(getContext(), SettingActivity.class);
             getContext().startActivity(intent);
-        }else{
-            PackageManager pm =getContext(). getPackageManager();
+        } else {
+            PackageManager pm = getContext().getPackageManager();
             Intent intent = pm.getLaunchIntentForPackage(packageName);
-
             if (intent != null) {
+                SharedPreferences.Editor editor = getContext().getSharedPreferences("setting", MODE_PRIVATE).edit();
+                editor.putString("app", packageName);
+                editor.putString("label", name);
+                editor.putString("class", className);
+                editor.putString("uri", uri);
+                editor.putString("mode", mode);
+                editor.commit();
 
-                {
-                    SharedPreferences.Editor editor = getContext(). getSharedPreferences("setting",MODE_PRIVATE).edit();
-                    editor.putString("app", packageName);
-                    editor.putString("label", Name);
-                    editor.putString("class",className);
-                    editor.putString("uri",uri);
-                    editor.putString("mode",mode);
-                    editor.commit();
-                }
-
-                //   getContext().startActivity(intent);
-                intent=new Intent(getContext() ,SettingActivity.class);
+                intent = new Intent(getContext(), SettingActivity.class);
                 getContext().startActivity(intent);
-
-            }else{
-                Toast.makeText(getContext(),R.string.error_could_not_start,Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getContext(), R.string.error_could_not_start, Toast.LENGTH_SHORT).show();
             }
-
         }
-
-
     }
-
 
     /**
      * @param
@@ -149,7 +133,4 @@ public class ItemAdapter extends ArrayAdapter<Item> {
         Intent intent = context.getPackageManager().getLaunchIntentForPackage(packName);
         context.startActivity(intent);
     }
-
-
 }
-

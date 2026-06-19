@@ -223,16 +223,25 @@ public class SettingActivity extends Activity {
      * 若目标 Intent 能被解析则启动并返回 true，否则返回 false（不抛出异常）。
      */
     private boolean tryStartActivity(Intent intent) {
-        if (packageManager.resolveActivity(intent, 0) == null) {
-            return false;
+        return IntentLaunchHelper.tryStartActivity(this, packageManager, intent, "SettingActivity");
+    }
+
+    private void start2ndLauncherPreview(String app2nd, String class2nd) {
+        Intent intent = packageManager.getLaunchIntentForPackage(app2nd);
+        if (tryStartActivity(intent)) {
+            Log.i("go2ndLauncher", "intent not null");
+            return;
         }
-        try {
-            startActivity(intent);
-            return true;
-        } catch (Exception e) {
-            Log.w("openHomeSettings", "start failed: " + intent, e);
-            return false;
-        }
+
+        intent = IntentLaunchHelper.buildMainLaunchIntent(app2nd, class2nd);
+
+        IntentLaunchHelper.startActivityOrShowError(
+                SettingActivity.this,
+                packageManager,
+                intent,
+                R.string.error_could_not_start,
+                "SettingActivity");
+        Log.i("go2ndLauncher", "intent is null," + intent);
     }
 
 
@@ -391,52 +400,27 @@ public class SettingActivity extends Activity {
             }
         });
 
-        final String app = read.getString("app_2nd", "");
-        if (app.length() < 1) return;
+        final String app2nd = read.getString("app_2nd", "");
+        if (app2nd.length() < 1) return;
 
         final Drawable icon;
-        final String label_2nd = read.getString("label_2nd", "");
-        final String class_2nd = read.getString("class_2nd", "");
-        Log.w("get 2nd", label_2nd + " - " + app + " - " + class_2nd);
+        final String label2nd = read.getString("label_2nd", "");
+        final String class2nd = read.getString("class_2nd", "");
+        Log.w("get 2nd", label2nd + " - " + app2nd + " - " + class2nd);
         try {
-            ApplicationInfo appInfo = packageManager.getApplicationInfo(app, 0);
+            ApplicationInfo appInfo = packageManager.getApplicationInfo(app2nd, 0);
             icon = (appInfo.loadIcon(packageManager));
 
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     ((ImageView) app_view_2nd.findViewById(R.id.item_img)).setImageDrawable(icon);
-                    ((TextView) app_view_2nd.findViewById(R.id.item_text)).setText(label_2nd);
-                    ((TextView) app_view_2nd.findViewById(R.id.item_packageName)).setText(app);
+                    ((TextView) app_view_2nd.findViewById(R.id.item_text)).setText(label2nd);
+                    ((TextView) app_view_2nd.findViewById(R.id.item_packageName)).setText(app2nd);
                     app_view_2nd.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View view) {
-                            Intent intent = packageManager.getLaunchIntentForPackage(app);
-
-                            if (intent != null) {
-                                //  intent.setAction(Intent.ACTION_MAIN);
-                                //    intent.addCategory("android.intent.category.HOME" );
-                                //   intent.setAction(Intent.ACTION_VIEW);
-                                startActivity(intent);
-                                Log.i("go2ndLauncher", "intent not null");
-                            } else {
-                                // Toast.makeText(SettingActivity.this,R.string.error_could_not_start,Toast.LENGTH_SHORT).show();
-
-                                intent = new Intent();
-                                intent.setAction(Intent.ACTION_MAIN);
-                                if (class_2nd.length() > 5) {
-                                    intent.setClassName(app, class_2nd);
-                                }
-                                try {
-                                    startActivity(intent);
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                    Toast.makeText(SettingActivity.this, R.string.error_could_not_start, Toast.LENGTH_SHORT).show();
-                                }
-
-                                Log.i("go2ndLauncher", "intent is null," + intent);
-                            }
-
+                            start2ndLauncherPreview(app2nd, class2nd);
                         }
                     });
                 }

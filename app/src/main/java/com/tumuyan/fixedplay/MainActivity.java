@@ -120,191 +120,189 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void openSettings() {
+        Intent intent = new Intent(MainActivity.this, SettingActivity.class);
+        startActivity(intent);
+    }
+
+    private void openSettingsWithError() {
+        Toast.makeText(MainActivity.this, R.string.error_could_not_start, Toast.LENGTH_SHORT).show();
+        openSettings();
+    }
+
+    private boolean startIntentOrOpenSettings(Intent intent) {
+        if (IntentLaunchHelper.tryStartActivity(this, packageManager, intent, "MainActivity")) {
+            return true;
+        }
+        openSettingsWithError();
+        return false;
+    }
+
+    private boolean handleSecondaryLauncher(SharedPreferences read) {
+        boolean apply2nd = read.getBoolean("apply2nd", false);
+        if (!apply2nd) {
+            return false;
+        }
+
+        final String app2nd = read.getString("app_2nd", "");
+        final String class2nd = read.getString("class_2nd", "");
+        HomePressSequence.Result sequence = HomePressSequence.next(
+                read.getInt(KEY_HOME_PRESS_COUNT, 0),
+                read.getLong(KEY_HOME_PRESS_START_TIME, 0),
+                SystemClock.elapsedRealtime(),
+                getSecondaryLauncherDetectionWindow(),
+                SECONDARY_LAUNCHER_REQUIRED_PRESSES);
+
+        SharedPreferences.Editor editor = getSharedPreferences("setting", MODE_PRIVATE).edit();
+        editor.putInt(KEY_HOME_PRESS_COUNT, sequence.count);
+        editor.putLong(KEY_HOME_PRESS_START_TIME, sequence.startTime);
+        editor.remove("lastTime");
+        editor.commit();
+
+        Log.i("HomePressSequence", "count=" + sequence.count
+                + ", triggered=" + sequence.triggered);
+
+        if (!sequence.triggered) {
+            return false;
+        }
+
+        if (app2nd.length() > 0) {
+            launchSecondaryApp(app2nd, class2nd);
+        } else {
+            openSettings();
+        }
+        return true;
+    }
+
+    private void launchSecondaryApp(String app2nd, String class2nd) {
+        Intent intent = packageManager.getLaunchIntentForPackage(app2nd);
+        if (intent != null) {
+            intent.addCategory(Intent.CATEGORY_HOME);
+            Log.w("2nd2", "length>0 -> intent not null");
+            startIntentOrOpenSettings(intent);
+            return;
+        }
+
+        intent = IntentLaunchHelper.buildMainLaunchIntent(app2nd, class2nd);
+        startIntentOrOpenSettings(intent);
+    }
+
+    private void launchConfiguredApp(String app, String className, String uri) {
+        switch (mode) {
+            case "r2":
+                launchDefaultApp(app);
+                break;
+            case "r1":
+                launchExplicitOrDefaultApp(app, className);
+                break;
+            case "beta":
+                launchBetaApp(app, className);
+                break;
+            case "uri":
+                launchUriApp(app, className, uri);
+                break;
+            case "uri_dail":
+                launchDialApp(app, className, uri);
+                break;
+            case "uri_file":
+                launchFileApp(app, className, uri);
+                break;
+            default:
+                openSettings();
+                break;
+        }
+    }
+
+    private void launchDefaultApp(String app) {
+        Log.w("MainActivity mode2", mode);
+        Intent intent = packageManager.getLaunchIntentForPackage(app);
+        startIntentOrOpenSettings(intent);
+    }
+
+    private void launchExplicitOrDefaultApp(String app, String className) {
+        if (IntentLaunchHelper.hasLaunchClass(className)) {
+            Intent intent = new Intent();
+            intent.setClassName(app, className);
+            startIntentOrOpenSettings(intent);
+            return;
+        }
+
+        Intent intent = packageManager.getLaunchIntentForPackage(app);
+        if (intent != null) {
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        }
+        startIntentOrOpenSettings(intent);
+    }
+
+    private void launchBetaApp(String app, String className) {
+        Intent intent = new Intent();
+        if (action.length() > 0 && !"none".equals(action)) {
+            intent.setAction(action);
+        }
+
+        if (IntentLaunchHelper.hasLaunchClass(className)) {
+            intent.setClassName(app, className);
+        } else {
+            intent = packageManager.getLaunchIntentForPackage(app);
+            if (intent != null) {
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            }
+        }
+
+        if (!IntentLaunchHelper.tryStartActivity(this, packageManager, intent, "MainActivity")) {
+            Toast.makeText(this, getString(R.string.toast_main_start_error, mode), Toast.LENGTH_SHORT).show();
+            openSettings();
+        }
+    }
+
+    private void launchUriApp(String app, String className, String uri) {
+        Uri u = Uri.parse(uri);
+        Intent intent = new Intent(Intent.ACTION_VIEW, u);
+        IntentLaunchHelper.applyTarget(intent, app, className);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startIntentOrOpenSettings(intent);
+    }
+
+    private void launchDialApp(String app, String className, String uri) {
+        Uri u = Uri.parse(uri);
+        Intent intent = new Intent(Intent.ACTION_DIAL, u);
+        IntentLaunchHelper.applyTarget(intent, app, className);
+        startIntentOrOpenSettings(intent);
+    }
+
+    private void launchFileApp(String app, String className, String uri) {
+        Intent intent = new Intent("android.intent.action.VIEW");
+        intent.addCategory("android.intent.category.DEFAULT");
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        IntentLaunchHelper.applyTarget(intent, app, className);
+        Uri u = FileProvider.getUriForFile(
+                this,
+                getPackageName() + ".fileprovider",
+                new File(uri));
+        intent.setDataAndType(u, "*/*");
+        if (!IntentLaunchHelper.tryStartActivity(this, packageManager, intent, "MainActivity")) {
+            Toast.makeText(this, R.string.error_could_not_start, Toast.LENGTH_SHORT).show();
+        }
+    }
+
 
     public void go() {
         SharedPreferences read = getSharedPreferences("setting", MODE_PRIVATE);
         String app = read.getString("app", "");
-        String claseName = read.getString("class", "");
+        String className = read.getString("class", "");
         String uri = read.getString("uri", "");
         mode = read.getString("mode", "r2");
         action = read.getString("action", "");
         Log.i("MainActivity.go()", "mode=" + mode + ", packagename=" + app);
 
-        boolean apply2nd = read.getBoolean("apply2nd", false);
-
-        final String app_2nd = read.getString("app_2nd", "");
-        final String class_2nd = read.getString("class_2nd", "");
-
-        if (apply2nd) {
-            HomePressSequence.Result sequence = HomePressSequence.next(
-                    read.getInt(KEY_HOME_PRESS_COUNT, 0),
-                    read.getLong(KEY_HOME_PRESS_START_TIME, 0),
-                    SystemClock.elapsedRealtime(),
-                    getSecondaryLauncherDetectionWindow(),
-                    SECONDARY_LAUNCHER_REQUIRED_PRESSES);
-
-            SharedPreferences.Editor editor = getSharedPreferences("setting", MODE_PRIVATE).edit();
-            editor.putInt(KEY_HOME_PRESS_COUNT, sequence.count);
-            editor.putLong(KEY_HOME_PRESS_START_TIME, sequence.startTime);
-            editor.remove("lastTime");
-            editor.commit();
-
-            Log.i("HomePressSequence", "count=" + sequence.count
-                    + ", triggered=" + sequence.triggered);
-
-            if (sequence.triggered) {
-                if (app_2nd.length() > 0) {
-                    Intent intent = new Intent();
-
-                    intent = packageManager.getLaunchIntentForPackage(app_2nd);
-                    if (intent != null) {
-                        intent.addCategory(Intent.CATEGORY_HOME);
-                        Log.w("2nd2", "length>0 -> intent not null");
-                        startActivity(intent);
-                    } else {
-                        // Toast.makeText(SettingActivity.this,R.string.error_could_not_start,Toast.LENGTH_SHORT).show();
-
-                        intent = new Intent();
-                        intent.setAction(Intent.ACTION_MAIN);
-                        if (class_2nd.length() > 5) {
-                            intent.setClassName(app_2nd, class_2nd);
-                        }
-                        try {
-                            startActivity(intent);
-                        } catch (Exception e) {
-                            Log.e("startActivity", app_2nd + ", " + class_2nd);
-                            e.printStackTrace();
-                            Toast.makeText(MainActivity.this, R.string.error_could_not_start, Toast.LENGTH_SHORT).show();
-                            intent = new Intent(MainActivity.this, SettingActivity.class);
-                            startActivity(intent);
-                        }
-                    }
-                } else {
-                    Intent intent = new Intent(MainActivity.this, SettingActivity.class);
-                    startActivity(intent);
-                }
-                return;
-            }
+        if (handleSecondaryLauncher(read)) {
+            return;
         }
 
-        if (app.length() > 0 && app != THIS_PACKAGE) {
-            switch (mode) {
-                case "r2": {
-                    Log.w("MainActivity mode2", mode);
-                    Intent intent = packageManager.getLaunchIntentForPackage(app);
-                    if (intent != null) startActivity(intent);
-                    break;
-                }
-
-                case "r1":
-                    /*                    */
-                    if (claseName.length() > 5) {
-                        Intent intent = new Intent();
-                        intent.setClassName(app, claseName);
-                        startActivity(intent);
-                    } else {
-                        //   Log.w("MainActivity mode1" ,mode);
-                        Intent intent = new Intent();
-                        intent = packageManager.getLaunchIntentForPackage(app);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        this.startActivity(intent);
-                    }
-                    break;
-                case "beta":
-                    /*                    */
-                {
-
-
-                    Intent intent = new Intent();
-
-                    if (action.length() > 0 && !"none".equals(action)) {
-                        intent.setAction(action);
-                    }
-
-                    if (claseName.length() > 5) {
-                        intent.setClassName(app, claseName);
-
-                    } else {
-                        intent = packageManager.getLaunchIntentForPackage(app);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-                    }
-                    try {
-                        startActivity(intent);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        //   Toast.makeText(this,getString(R.string.toast_main_start_error,mode)"模式"+mode + "启动应用时发生了错误",Toast.LENGTH_SHORT).show();
-                        Toast.makeText(this, getString(R.string.toast_main_start_error, mode), Toast.LENGTH_SHORT).show();
-                        intent = new Intent(MainActivity.this, SettingActivity.class);
-                        startActivity(intent);
-
-                    }
-
-
-                }
-
-
-                break;
-
-                case "uri": {
-                    Uri u = Uri.parse(uri);
-                    Intent intent = new Intent(Intent.ACTION_VIEW, u);
-
-
-                    if (claseName.length() > 0) {
-                        intent.setClassName(app, claseName);
-                    } else {
-                        intent.setPackage(app);
-                    }
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-                    startActivity(intent);
-                    break;
-                }
-
-                /*   似乎没用*/
-                case "uri_dail": {
-                    Uri u = Uri.parse(uri);
-                    Intent intent = new Intent(Intent.ACTION_DIAL, u);
-                    if (claseName.length() > 0) {
-                        intent.setClassName(app, claseName);
-                    } else {
-                        intent.setPackage(app);
-                    }
-                    startActivity(intent);
-                    break;
-                }
-
-                case "uri_file": {
-                    Intent intent = new Intent("android.intent.action.VIEW");
-                    intent.addCategory("android.intent.category.DEFAULT");
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    if (claseName.length() > 0) {
-                        intent.setClassName(app, claseName);
-                    } else {
-                        intent.setPackage(app);
-                    }
-                    Uri u = FileProvider.getUriForFile(
-                            this,
-                            getPackageName() + ".fileprovider",
-                            new File(uri));
-                    intent.setDataAndType(u, "*/*");
-                    try {
-                        startActivity(intent);
-                    } catch (Exception e) {
-                        Log.e("MainActivity", "Could not open file: " + uri, e);
-                        Toast.makeText(this, R.string.error_could_not_start, Toast.LENGTH_SHORT).show();
-                    }
-
-                    break;
-                }
-
-
-            }
-
+        if (app.length() > 0 && !THIS_PACKAGE.equals(app)) {
+            launchConfiguredApp(app, className, uri);
         } else {
-            Intent intent = new Intent(MainActivity.this, SettingActivity.class);
-            startActivity(intent);
+            openSettings();
         }
     }
 
@@ -327,6 +325,15 @@ public class MainActivity extends Activity {
             return true;
         }
         return super.onKeyDown(keyCode, event);//继续执行父类其他点击事件
+    }
+
+    @Override
+    protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        if (imgview != null) {
+            imgview.setImageDrawable(null);
+        }
+        super.onDestroy();
     }
 
     private static final int GO = 1;

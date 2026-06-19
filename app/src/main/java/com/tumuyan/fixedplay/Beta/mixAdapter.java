@@ -1,5 +1,5 @@
-
 package com.tumuyan.fixedplay.Beta;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -25,13 +25,14 @@ import java.util.List;
  */
 public class mixAdapter extends ArrayAdapter<Item> {
     private int layoutId;
-    private String mode="r2";
-    private String uri="";
+    private String mode = "r2";
+    private String uri = "";
 
     public mixAdapter(Context context, int layoutId, List<Item> list) {
         super(context, layoutId, list);
         this.layoutId = layoutId;
     }
+
     public void setMode(String mode) {
         this.mode = mode;
     }
@@ -40,43 +41,39 @@ public class mixAdapter extends ArrayAdapter<Item> {
         this.uri = uri;
     }
 
-   // @NonNull
     @Override
     public View getView(final int position, View convertView, final ViewGroup parent) {
-
         final Item item = getItem(position);
         View view = LayoutInflater.from(getContext()).inflate(layoutId, parent, false);
-        final String packageName=item.getPackageName();
-        final String className=item.getClassName();
-        final String Name=item.getName();
+        final String packageName = item.getPackageName();
+        final String className = item.getClassName();
+        final String name = item.getName();
 
-        String  _class, _package, _name;
-        if(className.length()<1) {
-            _name=Name;
-            _package=packageName;
-        }else    if(className.contains(packageName)){
-            _class=className.replace(packageName,"");
-            _package=packageName;
-            _name=Name+"("+_class+")";
-        }else {
-            _name=Name;
-            _package=packageName+"\n"+className;
+        String _class, _package, _name;
+        if (className.length() < 1) {
+            _name = name;
+            _package = packageName;
+        } else if (className.contains(packageName)) {
+            _class = className.replace(packageName, "");
+            _package = packageName;
+            _name = name + "(" + _class + ")";
+        } else {
+            _name = name;
+            _package = packageName + "\n" + className;
         }
 
         ((ImageView) view.findViewById(R.id.item_img)).setImageDrawable(item.getAppIcon());
         ((TextView) view.findViewById(R.id.item_text)).setText(_name);
-        ((TextView)view.findViewById(R.id.item_packageName)).setText(_package);
+        ((TextView) view.findViewById(R.id.item_packageName)).setText(_package);
         view.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mOnItemDeleteListener.onDeleteClick(position);
             }
         });
-
-
-
         return view;
     }
+
     /**
      * 删除按钮的监听接口
      */
@@ -90,4 +87,3 @@ public class mixAdapter extends ArrayAdapter<Item> {
         this.mOnItemDeleteListener = mOnItemDeleteListener;
     }
 }
-
