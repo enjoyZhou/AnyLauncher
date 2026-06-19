@@ -26,6 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SettingActivity extends Activity {
+    private static final int SECONDARY_LAUNCHER_REQUIRED_PRESSES = 3;
+    private static final String KEY_HOME_PRESS_TRIGGERED = "homePressTriggered";
+    private static final String KEY_WAITING_FOR_SETTINGS_SCREEN = "waitingForSettingsScreen";
     PackageManager packageManager;
 
     String mode = "r2";
@@ -158,6 +161,23 @@ public class SettingActivity extends Activity {
     @Override
     protected void onPostResume() {
         super.onPostResume();
+        clearWaitingForSettingsScreen();
+        maybeClearTriggeredHomePressSequence();
+    }
+
+    private void clearWaitingForSettingsScreen() {
+        getSharedPreferences("setting", MODE_PRIVATE)
+                .edit()
+                .remove(KEY_WAITING_FOR_SETTINGS_SCREEN)
+                .commit();
+    }
+
+    private void maybeClearTriggeredHomePressSequence() {
+        SharedPreferences read = getSharedPreferences("setting", MODE_PRIVATE);
+        boolean homePressTriggered = read.getBoolean(KEY_HOME_PRESS_TRIGGERED, false);
+        if (!HomePressSequence.shouldClearOnSettingsResume(homePressTriggered)) {
+            return;
+        }
         clearHomePressSequence();
     }
 
@@ -166,6 +186,8 @@ public class SettingActivity extends Activity {
                 .edit()
                 .remove("combo")
                 .remove("homePressStartTime")
+                .remove(KEY_HOME_PRESS_TRIGGERED)
+                .remove(KEY_WAITING_FOR_SETTINGS_SCREEN)
                 .remove("lastTime")
                 .commit();
     }
@@ -395,6 +417,8 @@ public class SettingActivity extends Activity {
                 editor.putBoolean("apply2nd", state);
                 editor.remove("combo");
                 editor.remove("homePressStartTime");
+                editor.remove(KEY_HOME_PRESS_TRIGGERED);
+                editor.remove(KEY_WAITING_FOR_SETTINGS_SCREEN);
                 editor.remove("lastTime");
                 editor.commit();
             }

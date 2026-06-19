@@ -20,12 +20,49 @@ final class HomeLauncherEntry {
     }
 
     static boolean shouldRedirectToConfiguredApp(boolean pendingHomeInvocation,
+                                                 boolean waitingForSettingsScreen,
                                                  String configuredApp,
                                                  String launcherPackage) {
         return !pendingHomeInvocation
+                && !waitingForSettingsScreen
                 && configuredApp != null
                 && configuredApp.length() > 0
                 && !launcherPackage.equals(configuredApp);
+    }
+
+    static boolean shouldRedirectToConfiguredApp(boolean pendingHomeInvocation,
+                                                 String configuredApp,
+                                                 String launcherPackage) {
+        return shouldRedirectToConfiguredApp(
+                pendingHomeInvocation,
+                false,
+                configuredApp,
+                launcherPackage);
+    }
+
+    static HomePressSequence.Result next(boolean countAsPress,
+                                         boolean previousTriggered,
+                                         int previousCount,
+                                         long sequenceStartTime,
+                                         long currentTime,
+                                         long windowMillis,
+                                         int requiredPresses) {
+        if (!countAsPress) {
+            return HomePressSequence.reconcile(
+                    previousTriggered,
+                    previousCount,
+                    sequenceStartTime,
+                    currentTime,
+                    windowMillis,
+                    requiredPresses);
+        }
+        return HomePressSequence.next(
+                previousTriggered,
+                previousCount,
+                sequenceStartTime,
+                currentTime,
+                windowMillis,
+                requiredPresses);
     }
 
     static HomePressSequence.Result next(boolean countAsPress,
@@ -34,10 +71,9 @@ final class HomeLauncherEntry {
                                          long currentTime,
                                          long windowMillis,
                                          int requiredPresses) {
-        if (!countAsPress) {
-            return new HomePressSequence.Result(0, 0, false);
-        }
-        return HomePressSequence.next(
+        return next(
+                countAsPress,
+                false,
                 previousCount,
                 sequenceStartTime,
                 currentTime,

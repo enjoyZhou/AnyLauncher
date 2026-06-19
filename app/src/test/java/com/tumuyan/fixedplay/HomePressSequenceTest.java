@@ -52,11 +52,11 @@ public class HomePressSequenceTest {
     }
 
     @Test
-    public void mainActivityUsesFifteenHundredMillisecondModernSystemTolerance() throws Exception {
+    public void mainActivityUsesTwoHundredMillisecondModernSystemTolerance() throws Exception {
         Field field = MainActivity.class.getDeclaredField("SECONDARY_LAUNCHER_SYSTEM_TOLERANCE_MS");
         field.setAccessible(true);
 
-        assertEquals(1500L, field.getLong(null));
+        assertEquals(200L, field.getLong(null));
     }
 
     @Test
@@ -76,11 +76,11 @@ public class HomePressSequenceTest {
     }
 
     @Test
-    public void startsNewSequenceAfterTriggerWasConsumed() {
+    public void keepsTriggeredSequenceLockedUntilItIsConsumed() {
         HomePressSequence.Result result = HomePressSequence.next(3, 1000, 5000, 1050, 3);
 
-        assertFalse(result.triggered);
-        assertEquals(1, result.count);
-        assertEquals(5000, result.startTime);
+        assertTrue(result.triggered);
+        assertEquals(3, result.count);
+        assertEquals(1000, result.startTime);
     }
 }

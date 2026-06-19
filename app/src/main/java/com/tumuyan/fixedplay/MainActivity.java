@@ -35,6 +35,8 @@ public class MainActivity extends Activity {
     private static final int SECONDARY_LAUNCHER_REQUIRED_PRESSES = 3;
     private static final String KEY_HOME_PRESS_COUNT = "combo";
     private static final String KEY_HOME_PRESS_START_TIME = "homePressStartTime";
+    private static final String KEY_HOME_PRESS_TRIGGERED = "homePressTriggered";
+    private static final String KEY_WAITING_FOR_SETTINGS_SCREEN = "waitingForSettingsScreen";
 
     PackageManager packageManager;
     final String THIS_PACKAGE = "com.tumuyan.fixedplay";
@@ -143,8 +145,10 @@ public class MainActivity extends Activity {
         String app = read.getString("app", "");
         String className = read.getString("class", "");
         String uri = read.getString("uri", "");
+        boolean waitingForSettingsScreen = read.getBoolean(KEY_WAITING_FOR_SETTINGS_SCREEN, false);
         if (HomeLauncherEntry.shouldRedirectToConfiguredApp(
                 pendingHomeInvocation,
+                waitingForSettingsScreen,
                 app,
                 THIS_PACKAGE)) {
             Log.i("MainActivity", "Redirecting trampoline back to configured app");
@@ -155,20 +159,71 @@ public class MainActivity extends Activity {
     }
 
     private void openSettings() {
+        openSettings(false);
+    }
+
+    private boolean openSettings(boolean clearSequenceOnSuccess) {
         Intent intent = new Intent(MainActivity.this, SettingActivity.class);
-        startActivity(intent);
+        try {
+            startActivity(intent);
+            if (clearSequenceOnSuccess) {
+                clearHomePressSequence();
+            }
+            return true;
+        } catch (Exception e) {
+            Log.e("MainActivity", "Could not open settings", e);
+            return false;
+        }
     }
 
     private void openSettingsWithError() {
+        openSettingsWithError(false);
+    }
+
+    private void openSettingsWithError(boolean clearSequenceOnSuccess) {
         Toast.makeText(MainActivity.this, R.string.error_could_not_start, Toast.LENGTH_SHORT).show();
-        openSettings();
+        openSettings(clearSequenceOnSuccess);
     }
 
     private boolean startIntentOrOpenSettings(Intent intent) {
+        return startIntentOrOpenSettings(intent, false);
+    }
+
+    private boolean startIntentOrOpenSettings(Intent intent, boolean clearSequenceOnSuccess) {
         if (IntentLaunchHelper.tryStartActivity(this, packageManager, intent, "MainActivity")) {
+            if (clearSequenceOnSuccess) {
+                clearHomePressSequence();
+            }
             return true;
         }
-        openSettingsWithError();
+        openSettingsWithError(clearSequenceOnSuccess);
+        return false;
+    }
+
+    private void clearHomePressSequence() {
+        getSharedPreferences("setting", MODE_PRIVATE)
+                .edit()
+                .remove(KEY_HOME_PRESS_COUNT)
+                .remove(KEY_HOME_PRESS_START_TIME)
+                .remove(KEY_HOME_PRESS_TRIGGERED)
+                .remove(KEY_WAITING_FOR_SETTINGS_SCREEN)
+                .remove("lastTime")
+                .commit();
+    }
+
+    private void setWaitingForSettingsScreen(boolean waiting) {
+        getSharedPreferences("setting", MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_WAITING_FOR_SETTINGS_SCREEN, waiting)
+                .commit();
+    }
+
+    private boolean openSettingsAndHoldLauncher() {
+        setWaitingForSettingsScreen(true);
+        if (openSettings(false)) {
+            return true;
+        }
+        setWaitingForSettingsScreen(false);
         return false;
     }
 
@@ -176,11 +231,13 @@ public class MainActivity extends Activity {
         boolean apply2nd = read.getBoolean("apply2nd", false);
         final String app2nd = read.getString("app_2nd", "");
         final String class2nd = read.getString("class_2nd", "");
+        boolean previousTriggered = read.getBoolean(KEY_HOME_PRESS_TRIGGERED, false);
         int previousCount = read.getInt(KEY_HOME_PRESS_COUNT, 0);
         long previousStartTime = read.getLong(KEY_HOME_PRESS_START_TIME, 0);
         long now = SystemClock.elapsedRealtime();
         HomePressSequence.Result sequence = HomeLauncherEntry.next(
                 countAsHomePress,
+                previousTriggered,
                 previousCount,
                 previousStartTime,
                 now,
@@ -190,6 +247,7 @@ public class MainActivity extends Activity {
         SharedPreferences.Editor editor = getSharedPreferences("setting", MODE_PRIVATE).edit();
         editor.putInt(KEY_HOME_PRESS_COUNT, sequence.count);
         editor.putLong(KEY_HOME_PRESS_START_TIME, sequence.startTime);
+        editor.putBoolean(KEY_HOME_PRESS_TRIGGERED, sequence.triggered);
         editor.remove("lastTime");
         editor.commit();
 
@@ -204,7 +262,7 @@ public class MainActivity extends Activity {
                 app2nd) == HomeLauncherEntry.TriggerAction.LAUNCH_SECONDARY_APP) {
             launchSecondaryApp(app2nd, class2nd);
         } else {
-            openSettings();
+            openSettingsAndHoldLauncher();
         }
         return true;
     }
@@ -214,12 +272,12 @@ public class MainActivity extends Activity {
         if (intent != null) {
             intent.addCategory(Intent.CATEGORY_HOME);
             Log.w("2nd2", "length>0 -> intent not null");
-            startIntentOrOpenSettings(intent);
+            startIntentOrOpenSettings(intent, true);
             return;
         }
 
         intent = IntentLaunchHelper.buildMainLaunchIntent(app2nd, class2nd);
-        startIntentOrOpenSettings(intent);
+        startIntentOrOpenSettings(intent, true);
     }
 
     private void launchConfiguredApp(String app, String className, String uri) {

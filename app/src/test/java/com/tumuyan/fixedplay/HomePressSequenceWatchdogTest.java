@@ -18,9 +18,25 @@ public class HomePressSequenceWatchdogTest {
     }
 
     @Test
+    public void explicitTriggeredFlagKeepsSequenceLocked() {
+        HomePressSequence.Result result = HomePressSequence.next(
+                true, 1, 1000, 5000, 800, 3);
+
+        assertTrue(result.triggered);
+        assertEquals(1, result.count);
+        assertEquals(1000, result.startTime);
+    }
+
+    @Test
     public void settingsResumeOnlyClearsTriggeredSequence() {
         assertFalse(HomePressSequence.shouldClearOnSettingsResume(2, 3));
         assertTrue(HomePressSequence.shouldClearOnSettingsResume(3, 3));
         assertTrue(HomePressSequence.shouldClearOnSettingsResume(4, 3));
+    }
+
+    @Test
+    public void settingsResumeUsesExplicitTriggeredFlag() {
+        assertFalse(HomePressSequence.shouldClearOnSettingsResume(false));
+        assertTrue(HomePressSequence.shouldClearOnSettingsResume(true));
     }
 }

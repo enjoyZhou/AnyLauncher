@@ -8,9 +8,19 @@ import static org.junit.Assert.assertFalse;
 public class HomeLauncherEntryTest {
 
     @Test
-    public void ignoresNonHomeLaunchAndClearsPersistedSequence() {
+    public void keepsUnexpiredSequenceOnNonHomeLaunch() {
         HomePressSequence.Result result = HomeLauncherEntry.next(
                 false, 2, 1000, 1200, 1050, 3);
+
+        assertFalse(result.triggered);
+        assertEquals(2, result.count);
+        assertEquals(1000, result.startTime);
+    }
+
+    @Test
+    public void clearsExpiredSequenceOnNonHomeLaunch() {
+        HomePressSequence.Result result = HomeLauncherEntry.next(
+                false, 2, 1000, 2500, 1050, 3);
 
         assertFalse(result.triggered);
         assertEquals(0, result.count);
@@ -42,18 +52,24 @@ public class HomeLauncherEntryTest {
     @Test
     public void relaunchesConfiguredAppWhenTrampolineReturnsToForeground() {
         assertEquals(true, HomeLauncherEntry.shouldRedirectToConfiguredApp(
-                false, "com.example.kiosk", "com.tumuyan.fixedplay"));
+                false, false, "com.example.kiosk", "com.tumuyan.fixedplay"));
     }
 
     @Test
     public void doesNotRelaunchWhenHomeHandlingIsStillPending() {
         assertEquals(false, HomeLauncherEntry.shouldRedirectToConfiguredApp(
-                true, "com.example.kiosk", "com.tumuyan.fixedplay"));
+                true, false, "com.example.kiosk", "com.tumuyan.fixedplay"));
     }
 
     @Test
     public void doesNotRelaunchWhenConfiguredAppIsLauncherItself() {
         assertEquals(false, HomeLauncherEntry.shouldRedirectToConfiguredApp(
-                false, "com.tumuyan.fixedplay", "com.tumuyan.fixedplay"));
+                false, false, "com.tumuyan.fixedplay", "com.tumuyan.fixedplay"));
+    }
+
+    @Test
+    public void doesNotRelaunchConfiguredAppWhileWaitingForSettingsScreen() {
+        assertEquals(false, HomeLauncherEntry.shouldRedirectToConfiguredApp(
+                false, true, "com.example.kiosk", "com.tumuyan.fixedplay"));
     }
 }
