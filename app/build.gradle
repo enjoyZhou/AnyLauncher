@@ -6,8 +6,8 @@ android {
         applicationId "com.tumuyan.fixedplay"
         minSdkVersion 9
         targetSdkVersion 33
-        versionCode 20
-        versionName "1.20"
+        versionCode 50
+        versionName "1.50"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
