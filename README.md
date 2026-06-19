@@ -27,7 +27,8 @@ Android 2.3 through 6.x use best-effort legacy compatibility.
 2. 每次按下home键，把选中的应用切换到前台
 3. 打开指定网页、地图、电话拨号、应用的具体Activity、快捷方式等
 
-目前无法保证能跳转到系统默认Launcher选择器的界面，百度到的方法似乎都不怎么好用。如果有简单的demo请联系我
+~~目前无法保证能跳转到系统默认Launcher选择器的界面，百度到的方法似乎都不怎么好用。如果有简单的demo请联系我~~
+现已支持尝试跳转到系统默认 Launcher 设置页 / 选择器，并提供多级回退；不同 ROM 上的实际落点和是否弹出选择器仍取决于系统实现。
 
 
 ## Build Environment
