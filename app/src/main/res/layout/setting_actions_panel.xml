@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="8dp">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?android:attr/listDivider" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp">
+
+        <Button
+            android:id="@+id/button1"
+            style="@style/SettingActionButton"
+            android:nextFocusLeft="@+id/button3"
+            android:nextFocusRight="@+id/button2"
+            android:text="@string/btn_1" />
+
+        <Button
+            android:id="@+id/button2"
+            style="@style/SettingActionButton"
+            android:nextFocusLeft="@id/button1"
+            android:nextFocusRight="@id/button3"
+            android:text="@string/btn_2" />
+
+        <Button
+            android:id="@+id/button3"
+            style="@style/SettingActionButton"
+            android:nextFocusLeft="@id/button2"
+            android:nextFocusRight="@id/button1"
+            android:text="@string/btn_3" />
+    </LinearLayout>
+</LinearLayout>

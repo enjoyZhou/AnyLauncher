@@ -50,7 +50,8 @@
         android:theme="@style/AppTheme">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter android:priority="99">
            <!--     <category android:name="android.intent.category.LAUNCHER" />-->
 
@@ -83,7 +84,7 @@
         <activity android:name=".SettingActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:launchMode="singleInstance">
+            android:launchMode="singleTask">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
                 <action android:name="android.intent.action.MAIN" />

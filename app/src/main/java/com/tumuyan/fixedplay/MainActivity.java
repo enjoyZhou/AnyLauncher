@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -24,14 +25,23 @@ import java.io.File;
 
 public class MainActivity extends Activity {
 
+    private static final long SECONDARY_LAUNCHER_USER_PRESS_WINDOW_MS = 800L;
+    private static final long SECONDARY_LAUNCHER_SYSTEM_TOLERANCE_MS = 250L;
+    private static final long SECONDARY_LAUNCHER_LEGACY_SYSTEM_TOLERANCE_MS = 800L;
+    private static final int SECONDARY_LAUNCHER_REQUIRED_PRESSES = 3;
+    private static final String KEY_HOME_PRESS_COUNT = "combo";
+    private static final String KEY_HOME_PRESS_START_TIME = "homePressStartTime";
+
     PackageManager packageManager;
     final String THIS_PACKAGE = "com.tumuyan.fixedplay";
     long splash_time = 0;
     String mode = "r2", action = "";
     ImageView imgview = null;
+    private boolean pendingHomeInvocation = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         packageManager = getPackageManager();
         Log.w("MainActivity", "Create");
 
@@ -68,7 +78,16 @@ public class MainActivity extends Activity {
                     .into(imgview);
         }
 
-        super.onCreate(savedInstanceState);
+        handlePendingHomeInvocation();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        pendingHomeInvocation = true;
+        Log.i("MainActivity", "Received new HOME intent");
+        handlePendingHomeInvocation();
     }
 
     private void skip_splash() {
@@ -76,6 +95,7 @@ public class MainActivity extends Activity {
             handler.removeMessages(GO);
             splash_time = 0;
             imgview.setImageDrawable(null);
+            pendingHomeInvocation = false;
             go();
         }
     }
@@ -88,10 +108,16 @@ public class MainActivity extends Activity {
 
     @Override
     public void onResume() {
-        Log.w("MainActivity", String.format("Resume, splash %d", splash_time));
-        if (splash_time <= 0)
-            go();
         super.onResume();
+        Log.w("MainActivity", String.format("Resume, splash %d", splash_time));
+        handlePendingHomeInvocation();
+    }
+
+    private void handlePendingHomeInvocation() {
+        if (pendingHomeInvocation && splash_time <= 0) {
+            pendingHomeInvocation = false;
+            go();
+        }
     }
 
 
@@ -105,34 +131,28 @@ public class MainActivity extends Activity {
         Log.i("MainActivity.go()", "mode=" + mode + ", packagename=" + app);
 
         boolean apply2nd = read.getBoolean("apply2nd", false);
-        long lastTime = read.getLong("lastTime", 0);
-        int combo = read.getInt("combo", 0);
 
         final String app_2nd = read.getString("app_2nd", "");
         final String class_2nd = read.getString("class_2nd", "");
-        Log.w("2nd", app_2nd + ", combo=" + combo);
 
         if (apply2nd) {
+            HomePressSequence.Result sequence = HomePressSequence.next(
+                    read.getInt(KEY_HOME_PRESS_COUNT, 0),
+                    read.getLong(KEY_HOME_PRESS_START_TIME, 0),
+                    SystemClock.elapsedRealtime(),
+                    getSecondaryLauncherDetectionWindow(),
+                    SECONDARY_LAUNCHER_REQUIRED_PRESSES);
 
-            long time = System.currentTimeMillis();
-            if (combo > 3)
-                combo = 0;
-            else {
-                if (time - lastTime < 500) {
-                    combo++;
-                } else {
-                    combo = 0;
-                }
-            }
+            SharedPreferences.Editor editor = getSharedPreferences("setting", MODE_PRIVATE).edit();
+            editor.putInt(KEY_HOME_PRESS_COUNT, sequence.count);
+            editor.putLong(KEY_HOME_PRESS_START_TIME, sequence.startTime);
+            editor.remove("lastTime");
+            editor.commit();
 
-            Log.w("combo", "" + combo);
-            {
-                SharedPreferences.Editor editor = getSharedPreferences("setting", MODE_PRIVATE).edit();
-                editor.putInt("combo", combo);
-                editor.putLong("lastTime", time);
-                editor.commit();
-            }
-            if (combo > 1) {
+            Log.i("HomePressSequence", "count=" + sequence.count
+                    + ", triggered=" + sequence.triggered);
+
+            if (sequence.triggered) {
                 if (app_2nd.length() > 0) {
                     Intent intent = new Intent();
 
@@ -288,6 +308,13 @@ public class MainActivity extends Activity {
         }
     }
 
+    private long getSecondaryLauncherDetectionWindow() {
+        long systemTolerance = Build.VERSION.SDK_INT <= Build.VERSION_CODES.M
+                ? SECONDARY_LAUNCHER_LEGACY_SYSTEM_TOLERANCE_MS
+                : SECONDARY_LAUNCHER_SYSTEM_TOLERANCE_MS;
+        return SECONDARY_LAUNCHER_USER_PRESS_WINDOW_MS + systemTolerance;
+    }
+
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -308,6 +335,7 @@ public class MainActivity extends Activity {
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case GO:
+                    pendingHomeInvocation = false;
                     go();
                     splash_time = 0;
                     break;

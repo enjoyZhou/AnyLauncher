@@ -155,6 +155,21 @@ public class SettingActivity extends Activity {
 
     }
 
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        clearHomePressSequence();
+    }
+
+    private void clearHomePressSequence() {
+        getSharedPreferences("setting", MODE_PRIVATE)
+                .edit()
+                .remove("combo")
+                .remove("homePressStartTime")
+                .remove("lastTime")
+                .commit();
+    }
+
     /**
      * 跳转到系统“默认主屏幕应用(Launcher)选择”界面。
      * 兼容 Android 7~13：优先使用官方公开 action（仅设 action、不锁定具体类名，
@@ -369,6 +384,9 @@ public class SettingActivity extends Activity {
                 boolean state = ((CheckBox) view).isChecked();
                 SharedPreferences.Editor editor = SettingActivity.this.getSharedPreferences("setting", MODE_PRIVATE).edit();
                 editor.putBoolean("apply2nd", state);
+                editor.remove("combo");
+                editor.remove("homePressStartTime");
+                editor.remove("lastTime");
                 editor.commit();
             }
         });
