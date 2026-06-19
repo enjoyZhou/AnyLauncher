@@ -19,6 +19,15 @@ final class HomeLauncherEntry {
         return TriggerAction.LAUNCH_SECONDARY_APP;
     }
 
+    static boolean shouldRedirectToConfiguredApp(boolean pendingHomeInvocation,
+                                                 String configuredApp,
+                                                 String launcherPackage) {
+        return !pendingHomeInvocation
+                && configuredApp != null
+                && configuredApp.length() > 0
+                && !launcherPackage.equals(configuredApp);
+    }
+
     static HomePressSequence.Result next(boolean countAsPress,
                                          int previousCount,
                                          long sequenceStartTime,

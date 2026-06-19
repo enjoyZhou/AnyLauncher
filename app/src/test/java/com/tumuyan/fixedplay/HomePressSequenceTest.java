@@ -52,6 +52,14 @@ public class HomePressSequenceTest {
     }
 
     @Test
+    public void mainActivityUsesFifteenHundredMillisecondModernSystemTolerance() throws Exception {
+        Field field = MainActivity.class.getDeclaredField("SECONDARY_LAUNCHER_SYSTEM_TOLERANCE_MS");
+        field.setAccessible(true);
+
+        assertEquals(1500L, field.getLong(null));
+    }
+
+    @Test
     public void resetsAfterDeviceRebootOrInvalidClockState() {
         HomePressSequence.Result result = HomePressSequence.next(2, 5000, 1000, 800, 3);
 

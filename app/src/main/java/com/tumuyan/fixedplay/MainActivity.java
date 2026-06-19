@@ -25,9 +25,13 @@ import java.io.File;
 
 public class MainActivity extends Activity {
 
+    // 用户连续按 Home 的基础时间窗口。
     private static final long SECONDARY_LAUNCHER_USER_PRESS_WINDOW_MS = 500L;
-    private static final long SECONDARY_LAUNCHER_SYSTEM_TOLERANCE_MS = 250L;
-    private static final long SECONDARY_LAUNCHER_LEGACY_SYSTEM_TOLERANCE_MS = 800L;
+    // 新版系统下，前后台切换和任务调度带来的额外容差时间。
+    private static final long SECONDARY_LAUNCHER_SYSTEM_TOLERANCE_MS = 200L;
+    // 旧版系统切换更慢，因此给更宽松的额外容差时间。
+    private static final long SECONDARY_LAUNCHER_LEGACY_SYSTEM_TOLERANCE_MS = 300L;
+    // 连续按下 3 次 Home 视为进入重新设置流程。
     private static final int SECONDARY_LAUNCHER_REQUIRED_PRESSES = 3;
     private static final String KEY_HOME_PRESS_COUNT = "combo";
     private static final String KEY_HOME_PRESS_START_TIME = "homePressStartTime";
@@ -53,18 +57,17 @@ public class MainActivity extends Activity {
 
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD,
                 WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
-//        getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
-//                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
+        // getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+        // WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         final String splash_img = read.getString("splash_img", "");
 
         splash_time = read.getInt("splash_time", 0);
 
         Log.w("MainActivity", "Create, splash_time = " + splash_time);
-//        if (System.currentTimeMillis() - SystemClock.elapsedRealtime() >60000 ){
-//            splash_time =0;
-//        }
+        // if (System.currentTimeMillis() - SystemClock.elapsedRealtime() >60000 ){
+        // splash_time =0;
+        // }
         if (splash_time > 0) {
             handler.sendEmptyMessageDelayed(GO, splash_time);
             setContentView(R.layout.splash_activity);
@@ -78,7 +81,7 @@ public class MainActivity extends Activity {
             Glide.with(this)
                     .load(splash_img)
                     .placeholder(R.drawable.unknow)
-//                    .asGif()
+                    // .asGif()
                     .into(imgview);
         }
 
@@ -119,7 +122,11 @@ public class MainActivity extends Activity {
     public void onResume() {
         super.onResume();
         Log.w("MainActivity", String.format("Resume, splash %d", splash_time));
-        handlePendingHomeInvocation();
+        if (pendingHomeInvocation) {
+            handlePendingHomeInvocation();
+            return;
+        }
+        redirectToConfiguredAppIfNeeded();
     }
 
     private void handlePendingHomeInvocation() {
@@ -128,6 +135,22 @@ public class MainActivity extends Activity {
             pendingHomeInvocation = false;
             pendingHomeInvocationCountsAsPress = false;
             go(countAsHomePress);
+        }
+    }
+
+    private void redirectToConfiguredAppIfNeeded() {
+        SharedPreferences read = getSharedPreferences("setting", MODE_PRIVATE);
+        String app = read.getString("app", "");
+        String className = read.getString("class", "");
+        String uri = read.getString("uri", "");
+        if (HomeLauncherEntry.shouldRedirectToConfiguredApp(
+                pendingHomeInvocation,
+                app,
+                THIS_PACKAGE)) {
+            Log.i("MainActivity", "Redirecting trampoline back to configured app");
+            mode = read.getString("mode", "r2");
+            action = read.getString("action", "");
+            launchConfiguredApp(app, className, uri);
         }
     }
 
@@ -153,11 +176,14 @@ public class MainActivity extends Activity {
         boolean apply2nd = read.getBoolean("apply2nd", false);
         final String app2nd = read.getString("app_2nd", "");
         final String class2nd = read.getString("class_2nd", "");
+        int previousCount = read.getInt(KEY_HOME_PRESS_COUNT, 0);
+        long previousStartTime = read.getLong(KEY_HOME_PRESS_START_TIME, 0);
+        long now = SystemClock.elapsedRealtime();
         HomePressSequence.Result sequence = HomeLauncherEntry.next(
                 countAsHomePress,
-                read.getInt(KEY_HOME_PRESS_COUNT, 0),
-                read.getLong(KEY_HOME_PRESS_START_TIME, 0),
-                SystemClock.elapsedRealtime(),
+                previousCount,
+                previousStartTime,
+                now,
                 getSecondaryLauncherDetectionWindow(),
                 SECONDARY_LAUNCHER_REQUIRED_PRESSES);
 
@@ -174,8 +200,8 @@ public class MainActivity extends Activity {
             return false;
         }
 
-        if (HomeLauncherEntry.actionForTrigger(apply2nd, app2nd)
-                == HomeLauncherEntry.TriggerAction.LAUNCH_SECONDARY_APP) {
+        if (HomeLauncherEntry.actionForTrigger(apply2nd,
+                app2nd) == HomeLauncherEntry.TriggerAction.LAUNCH_SECONDARY_APP) {
             launchSecondaryApp(app2nd, class2nd);
         } else {
             openSettings();
@@ -238,7 +264,8 @@ public class MainActivity extends Activity {
 
         Intent intent = packageManager.getLaunchIntentForPackage(app);
         if (intent != null) {
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                    | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         }
         startIntentOrOpenSettings(intent);
     }
@@ -254,7 +281,8 @@ public class MainActivity extends Activity {
         } else {
             intent = packageManager.getLaunchIntentForPackage(app);
             if (intent != null) {
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                        | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             }
         }
 
@@ -325,18 +353,17 @@ public class MainActivity extends Activity {
         return SECONDARY_LAUNCHER_USER_PRESS_WINDOW_MS + systemTolerance;
     }
 
-
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            //禁止使用返回键返回到上一页,但是可以直接退出程序
-            return true;//不执行父类点击事件
+            // 禁止使用返回键返回到上一页,但是可以直接退出程序
+            return true;// 不执行父类点击事件
         } else if (keyCode == KeyEvent.KEYCODE_ENTER) {
-//            跳过
+            // 跳过
             skip_splash();
             return true;
         }
-        return super.onKeyDown(keyCode, event);//继续执行父类其他点击事件
+        return super.onKeyDown(keyCode, event);// 继续执行父类其他点击事件
     }
 
     @Override

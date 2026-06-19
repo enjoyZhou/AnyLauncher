@@ -38,4 +38,22 @@ public class HomeLauncherEntryTest {
         assertEquals(HomeLauncherEntry.TriggerAction.LAUNCH_SECONDARY_APP,
                 HomeLauncherEntry.actionForTrigger(true, "com.uncube.launcher3"));
     }
+
+    @Test
+    public void relaunchesConfiguredAppWhenTrampolineReturnsToForeground() {
+        assertEquals(true, HomeLauncherEntry.shouldRedirectToConfiguredApp(
+                false, "com.example.kiosk", "com.tumuyan.fixedplay"));
+    }
+
+    @Test
+    public void doesNotRelaunchWhenHomeHandlingIsStillPending() {
+        assertEquals(false, HomeLauncherEntry.shouldRedirectToConfiguredApp(
+                true, "com.example.kiosk", "com.tumuyan.fixedplay"));
+    }
+
+    @Test
+    public void doesNotRelaunchWhenConfiguredAppIsLauncherItself() {
+        assertEquals(false, HomeLauncherEntry.shouldRedirectToConfiguredApp(
+                false, "com.tumuyan.fixedplay", "com.tumuyan.fixedplay"));
+    }
 }

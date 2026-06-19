@@ -1,5 +1,5 @@
 # AnyLauncher
-You can choose any Android application and set it as a Launcher.
+You can choose any Android application and set it as a Launcher. looks like a kiosk mode.
 
 ## Supported Android versions
 The APK supports Android 2.3 (API 9) through Android 13 (API 33).
